@@ -1,13 +1,13 @@
 Package: spsdxaringan
 Type: Package
 Title:  Xaringan Template With USDA-NRCS Soil and Plant Science Division Theme
-Version: 0.1.0
+Version: 0.1.1
 Author: Andrew G. Brown
 Authors@R: 
     person(given = "Andrew",
            family = "Brown",
            role = c("aut", "cre"),
-           email = "andrew.g.brown@gmail.com")
+           email = "andrew.g.brown@usda.gov")
 Maintainer: Andrew G. Brown <andrew.g.brown@usda.gov>
 Description: USDA-NRCS Soil and Plant Science Division {xaringan} slide templates for use in public-facing presentations.
 License: GPL-3

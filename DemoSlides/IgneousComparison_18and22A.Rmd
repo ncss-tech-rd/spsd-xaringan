@@ -1,0 +1,307 @@
+---
+output: 
+  xaringan::moon_reader:
+    css: [theme.css, theme-fonts.css, default, hygge, metropolis-fonts]
+    seal: false
+    nature:
+      slideNumberFormat: "%current%"   
+      highlightStyle: github
+      highlightLines: true
+---
+class: titleSlide
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(fig.retina = 3, warning = FALSE, message = FALSE, echo = FALSE)
+
+library(aqp)
+library(soilDB)
+library(ggplot2)
+
+knitr::opts_chunk$set(dev.args = list(bg = "transparent"))
+
+# get the data
+# kssl <- fetchKSSL(mlra = c("18","22A"),
+#                   returnMorphologicData = TRUE,
+#                   returnGeochemicalData = TRUE,
+#                   simplifyColors = TRUE, progress = FALSE)
+# save(kssl, file = "kssl1822a.rda")
+
+load("kssl1822a.rda")
+```
+ 
+```{r, code-constants}
+# constants for plots
+PLOT_X_MIN <- 15
+PLOT_X_MAX <- 75
+PLOT_Z_MAX <- 200
+```
+
+<br><br><br>
+.pull-left[
+  ## Comparison of Select Soils formed from Igneous Parent Materials in MLRA 18 & 22A
+]
+
+.right[.large[<br><br><br><br><br><br><br><br>
+              Andrew G. Brown <br>
+              <a href="mailto:andrew.g.brown@usda.gov"><i class="fas  fa-mail-bulk "></i>&nbsp;andrew.g.brown@usda.gov</a>
+              <br><br>
+]]
+
+---
+class: bodySlideNOBR
+<br>
+## Soil data with {aqp} and {soilDB}
+.left-column[
+  [![](https://raw.githubusercontent.com/ncss-tech/aqp/master/misc/hexstickers/aqp_sticker_v2.png)](http://ncss-tech.github.io/aqp/)
+
+  <br>
+
+  [![](https://www.r-project.org/logo/Rlogo.png)](https://www.r-project.org/)
+]
+
+
+.right-column[
+Let's use `soilDB::fetchKSSL` to query pedons in MLRAs 18 and 22A (Sierra Nevada Foothills and Mountains). We are going to investigate criteria for separation of igneous bedrock series concept based on total sand content. 
+```{r, echo = TRUE, eval = FALSE}
+library(aqp)
+library(soilDB)
+library(ggplot2)
+
+kssl <- fetchKSSL(mlra = c("18","22A"),
+                  returnMorphologicData = TRUE,
+                  returnGeochemicalData = TRUE,
+                  simplifyColors = TRUE)
+```
+
+```{r, echo = TRUE, ref.label='code-constants'}
+```
+]
+---
+
+class: bodySlide
+
+<br>
+
+## Data Cleaning
+ 
+```{r, echo = TRUE}
+# filter for target series
+seriesrgx <- "Stump ?Springs|Holland|Musick|Boomer|Trabuco|Cohasset"
+labspc <- subset(kssl$SPC, grepl(seriesrgx, taxonname, ignore.case = TRUE))
+
+# filter for valid geometry
+labspc <- subset(labspc, !checkHzDepthLogic(labspc)$overlapOrGap)
+hzidname(labspc) <- "labsampnum"
+
+# sanitize taxonname
+labspc$taxonname <- gsub(sprintf("(%s).*$", seriesrgx), replacement = "\\1", 
+                         x = labspc$taxonname, ignore.case = TRUE)
+labspc$taxonname <- tools::toTitleCase(tolower(labspc$taxonname))
+
+# truncate profiles to [0, PLOT_Z_MAX] centimeters depth
+labspc <- trunc(labspc, 0, PLOT_Z_MAX)
+```
+
+```{r, fig.width=9, fig.height=3}
+par(mar = c(0,0,0,2))
+groupedProfilePlot(labspc, groups = "taxonname", color="moist_soil_color",
+                   name = NA, print.id = FALSE, cex.names = 1.2)
+```
+
+---
+
+class: bodySlide
+
+<br>
+
+## Slab it!
+
+```{r, echo = TRUE}
+# calculate 1cm slab-wise quantiles
+labslabs <- slab(labspc, taxonname ~ sand, slab.structure = 1)
+
+# remove NA records
+labslabs <- labslabs[complete.cases(labslabs),]
+
+# create a SoilProfileCollection from 1cm-slabbed result
+depths(labslabs) <- taxonname ~ top + bottom
+
+MEAN_PSCS_TOP <- round(mean(labspc$pscs_top, na.rm = TRUE))
+MEAN_PSCS_BOT <- round(mean(labspc$pscs_bottom, na.rm = TRUE))
+
+labslabs
+```
+
+```{r}
+labslabs$hzdesgn <- labslabs$hzID
+hzdesgnname(labslabs) <- "hzdesgn" 
+```
+
+---
+
+class: bodySlide
+
+<br>
+
+## Sand [%] 1cm Depth Slab Quantiles
+ 
+.center[
+```{r, fig.width=10, fig.height=6}
+cbPalette <- RColorBrewer::brewer.pal(length(unique(labspc$taxonname)), 'Paired')
+
+ggplot(horizons(labslabs)) + 
+  scale_x_continuous(breaks = seq(PLOT_X_MIN, PLOT_X_MAX, 5)) +
+  scale_y_reverse() +
+  labs(title = "MLRA 18 & 22A Igneous Parent Materials\n1cm Slab Median",
+       x = "Total Sand Content [%]", y = "Depth [cm]", color = "KSSL pedons by\nSeries Name") +
+  geom_path(aes(x = p.q50, y = top, 
+                color = factor(taxonname, labels = paste0(unique(labspc$taxonname), " (n=", 
+                                                          as.numeric(table(labspc$taxonname)),")"))
+  ),linetype = 1, lwd = 1.5) +
+   annotate("rect", xmin = PLOT_X_MIN, xmax = PLOT_X_MAX, 
+                     ymin = MEAN_PSCS_TOP, ymax = MEAN_PSCS_BOT,  
+             alpha = 0.2, fill="green") +
+    geom_text(aes(x = 65, y = 60, label = sprintf("Mean PSCS\n(%s - %s cm)", MEAN_PSCS_TOP, MEAN_PSCS_BOT))) +
+  scale_color_manual(values = cbPalette) + theme_bw() + 
+  theme(text = element_text(size=16),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "transparent",colour = NA),
+        plot.background = element_rect(fill = "transparent",colour = NA))
+```
+]
+
+---
+
+class: bodySlide
+
+<br>
+## Spline it!
+
+```{r, echo = TRUE}
+# (probability) mass-preserved median splines, 1 per taxon name
+labspline <- aqp::combine(profileApply(labslabs, function(ls) {
+                                   spc2mpspline(ls, "p.q50", lam = 1)
+                                  }))
+labspline
+```
+
+---
+
+class: bodySlide
+
+<br>
+
+## Sand [%] Mass-Preserving Spline
+
+```{r, fig.width=10, fig.height=6}
+ggplot(horizons(labspline)) + 
+    scale_x_continuous(breaks = seq(PLOT_X_MIN, PLOT_X_MAX, 5)) +
+    scale_y_reverse() +
+    labs(title = "MLRA 18 & 22A Igneous Parent Materials\n1cm Slab Median + Mass-Preserving Spline (\u03BB = 1)",
+         x = "Total Sand Content [%]", y = "Depth [cm]", color = "KSSL pedons by\nSeries Name") +
+    geom_path(aes(x = p.q50_spline, y = top, 
+                  color = factor(taxonname, labels = paste0(unique(labspc$taxonname), " (n=", 
+                                                            as.numeric(table(labspc$taxonname)),")"))
+                  ),linetype = 1, lwd = 1.5) +
+    annotate("rect", xmin = PLOT_X_MIN, xmax = PLOT_X_MAX, 
+                     ymin = MEAN_PSCS_TOP, ymax = MEAN_PSCS_BOT,  
+             alpha = 0.2, fill="green") +
+    geom_text(aes(x = 65, y = 60, label = sprintf("Mean PSCS\n(%s - %s cm)", MEAN_PSCS_TOP, MEAN_PSCS_BOT))) +
+    scale_color_manual(values = cbPalette) + theme_bw() + 
+    theme(text = element_text(size=16),
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill = "transparent",colour = NA),
+          plot.background = element_rect(fill = "transparent",colour = NA))
+```
+
+---
+class: bodySlide
+<br>
+
+## Spline profiles first, then slab
+
+ - It works, mostly, but is messy. More sensitive to missing data.
+ 
+ - Resulting "profiles" are not as clean as the inverse shown on previous slide.
+
+```{r, fig.width=10, fig.height=6, eval=FALSE, echo=TRUE}
+prop_sand <- evalMissingData(labspc, "sand", name = "hzn_desgn")
+labspc <- subset(labspc, prop_sand == 1)
+labspcspline <- aqp::combine(profileApply(labspc, function(ls) {
+                                   spc2mpspline(ls, "sand", lam = 1)
+                                  }))
+# slab the spline results, rather than individual profiles
+splineslab <- slab(labspcspline, taxonname ~ sand_spline, slab.structure = 1)
+depths(splineslab) <- taxonname ~ top + bottom
+```
+ 
+```{r}
+# ggplot(horizons(splineslab)) + 
+#     scale_x_continuous(breaks = seq(PLOT_X_MIN, PLOT_X_MAX, 5)) +
+#     scale_y_reverse() +
+#     labs(title = "MLRA 18 & 22A Igneous Parent Materials\nMass-Preserving Spline (\u03BB = 1) + 1cm Slab Median",
+#          x = "Total Sand Content [%]", y = "Depth [cm]", color = "KSSL pedons by\nSeries Name") +
+#     geom_path(aes(x = p.q50, y = top, 
+#                   color = factor(taxonname, labels = paste0(unique(splineslab$taxonname), " (n=", 
+#                                                             as.numeric(table(labspc$taxonname)),")"))
+#                   ),linetype = 1, lwd = 1.5) +
+#     annotate("rect", xmin = PLOT_X_MIN, xmax = PLOT_X_MAX, 
+#                      ymin = MEAN_PSCS_TOP, ymax = MEAN_PSCS_BOT,  
+#              alpha = 0.2, fill="green") +
+#     geom_text(aes(x = 65, y = 60, label = sprintf("Mean PSCS\n(%s - %s cm)", MEAN_PSCS_TOP, MEAN_PSCS_BOT))) +
+#     scale_color_manual(values = cbPalette) + theme_bw() + 
+#     theme(text = element_text(size=16),
+#           panel.grid.major = element_blank(), 
+#           panel.grid.minor = element_blank(),
+#           panel.background = element_rect(fill = "transparent",colour = NA),
+#           plot.background = element_rect(fill = "transparent",colour = NA))
+```
+
+
+---
+class: bodySlide
+<br>
+## Summarize it!
+
+```{r}
+library(magrittr)
+res <- labspc %>%
+  trunc(MEAN_PSCS_TOP, MEAN_PSCS_BOT) %>% 
+  mutate_profile(dwt = (hzn_bot - hzn_top) / sum(hzn_bot - hzn_top),
+                 dwt_sand = sum(sand * dwt))  %>%
+  subset(!is.na(dwt_sand)) %>%
+  aqp::group_by(taxonname) %>%
+  aqp::summarize(median_dwt_sand = round(median(dwt_sand), 1),
+                 mean_dwt_sand= round(mean(dwt_sand), 1),
+                 sd_dwt_sand = round(sd(dwt_sand), 1))
+res <- res[order(res$median_dwt_sand),]
+knitr::kable(res, row.names=FALSE, caption = sprintf("Summary Statistics for Mean PSCS interval (%s - %s cm)", MEAN_PSCS_TOP, MEAN_PSCS_BOT))
+```
+
+---
+class: bodySlide
+<br>
+
+## Contact me with questions.
+.left-column[
+  <br>
+  ![](http://github.com/brownag.png)
+]
+
+.right-column[
+#### Andrew G. Brown
+
+<a href="mailto:andrew.g.brown@usda.gov">`r icon::fa("mail-bulk")`&nbsp;andrew.g.brown@usda.gov</a><br>
+<a href="http://github.com/brownag">`r icon::fa("github")`&nbsp;brownag</a><br>
+<a href="http://twitter.com/humus_rocks">`r icon::fa("twitter")`&nbsp;humus_rocks</a>
+
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+
+_USDA is an equal opportunity provider, employer, and lender._
+]
+

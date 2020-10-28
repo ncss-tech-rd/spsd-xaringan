@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>IgneousComparison_18and22A.utf8</title>
+    <meta charset="utf-8" />
+    <link href="IgneousComparison_18and22A_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="IgneousComparison_18and22A_files/remark-css-0.0.1/hygge.css" rel="stylesheet" />
+    <link href="IgneousComparison_18and22A_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <link href="IgneousComparison_18and22A_files/font-awesome-5.3.1/css/fontawesome-all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="theme.css" type="text/css" />
+    <link rel="stylesheet" href="theme-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+class: titleSlide
+
+
+ 
+
+
+&lt;br&gt;&lt;br&gt;&lt;br&gt;
+.pull-left[
+  ## Comparison of Select Soils formed from Igneous Parent Materials in MLRA 18 &amp; 22A
+]
+
+.right[.large[&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;
+              Andrew G. Brown &lt;br&gt;
+              &lt;a href="mailto:andrew.g.brown@usda.gov"&gt;&lt;i class="fas  fa-mail-bulk "&gt;&lt;/i&gt;&amp;nbsp;andrew.g.brown@usda.gov&lt;/a&gt;
+              &lt;br&gt;&lt;br&gt;
+]]
+
+---
+class: bodySlideNOBR
+&lt;br&gt;
+## Soil data with {aqp} and {soilDB}
+.left-column[
+  [![](https://raw.githubusercontent.com/ncss-tech/aqp/master/misc/hexstickers/aqp_sticker_v2.png)](http://ncss-tech.github.io/aqp/)
+
+  &lt;br&gt;
+
+  [![](https://www.r-project.org/logo/Rlogo.png)](https://www.r-project.org/)
+]
+
+
+.right-column[
+Let's use `soilDB::fetchKSSL` to query pedons in MLRAs 18 and 22A (Sierra Nevada Foothills and Mountains). We are going to investigate criteria for separation of igneous bedrock series concept based on total sand content. 
+
+```r
+library(aqp)
+library(soilDB)
+library(ggplot2)
+
+kssl &lt;- fetchKSSL(mlra = c("18","22A"),
+                  returnMorphologicData = TRUE,
+                  returnGeochemicalData = TRUE,
+                  simplifyColors = TRUE)
+```
+
+
+```r
+# constants for plots
+PLOT_X_MIN &lt;- 15
+PLOT_X_MAX &lt;- 75
+PLOT_Z_MAX &lt;- 200
+```
+]
+---
+
+class: bodySlide
+
+&lt;br&gt;
+
+## Data Cleaning
+ 
+
+```r
+# filter for target series
+seriesrgx &lt;- "Stump ?Springs|Holland|Musick|Boomer|Trabuco|Cohasset"
+labspc &lt;- subset(kssl$SPC, grepl(seriesrgx, taxonname, ignore.case = TRUE))
+
+# filter for valid geometry
+labspc &lt;- subset(labspc, !checkHzDepthLogic(labspc)$overlapOrGap)
+hzidname(labspc) &lt;- "labsampnum"
+
+# sanitize taxonname
+labspc$taxonname &lt;- gsub(sprintf("(%s).*$", seriesrgx), replacement = "\\1", 
+                         x = labspc$taxonname, ignore.case = TRUE)
+labspc$taxonname &lt;- tools::toTitleCase(tolower(labspc$taxonname))
+
+# truncate profiles to [0, PLOT_Z_MAX] centimeters depth
+labspc &lt;- trunc(labspc, 0, PLOT_Z_MAX)
+```
+
+&lt;img src="IgneousComparison_18and22A_files/figure-html/unnamed-chunk-4-1.png" width="648" /&gt;
+
+---
+
+class: bodySlide
+
+&lt;br&gt;
+
+## Slab it!
+
+
+```r
+# calculate 1cm slab-wise quantiles
+labslabs &lt;- slab(labspc, taxonname ~ sand, slab.structure = 1)
+
+# remove NA records
+labslabs &lt;- labslabs[complete.cases(labslabs),]
+
+# create a SoilProfileCollection from 1cm-slabbed result
+depths(labslabs) &lt;- taxonname ~ top + bottom
+
+MEAN_PSCS_TOP &lt;- round(mean(labspc$pscs_top, na.rm = TRUE))
+MEAN_PSCS_BOT &lt;- round(mean(labspc$pscs_bottom, na.rm = TRUE))
+
+labslabs
+```
+
+```
+## SoilProfileCollection with 6 profiles and 1153 horizons
+## profile ID: taxonname  |  horizon ID: hzID 
+## Depth range: 178 - 200 cm
+## 
+## ----- Horizons (6 / 1153 rows  |  10 / 11 columns) -----
+##  taxonname hzID top bottom variable  p.q5 p.q25 p.q50 p.q75 p.q95
+##     Boomer    1   0      1     sand 36.05 37.05  38.3 39.55 40.55
+##     Boomer    2   1      2     sand 36.05 37.05  38.3 39.55 40.55
+##     Boomer    3   2      3     sand 36.05 37.05  38.3 39.55 40.55
+##     Boomer    4   3      4     sand 26.89 30.85  35.8 38.30 40.30
+##     Boomer    5   4      5     sand 26.89 30.85  35.8 38.30 40.30
+##     Boomer    6   5      6     sand 26.89 30.85  35.8 38.30 40.30
+## [... more horizons ...]
+## 
+## ----- Sites (6 / 6 rows  |  1 / 1 columns) -----
+##      taxonname
+##         Boomer
+##       Cohasset
+##        Holland
+##         Musick
+##  Stump Springs
+##        Trabuco
+## 
+## Spatial Data: [EMPTY]
+```
+
+
+
+---
+
+class: bodySlide
+
+&lt;br&gt;
+
+## Sand [%] 1cm Depth Slab Quantiles
+ 
+.center[
+&lt;img src="IgneousComparison_18and22A_files/figure-html/unnamed-chunk-7-1.png" width="720" /&gt;
+]
+
+---
+
+class: bodySlide
+
+&lt;br&gt;
+## Spline it!
+
+
+```r
+# (probability) mass-preserved median splines, 1 per taxon name
+labspline &lt;- aqp::combine(profileApply(labslabs, function(ls) {
+                                   spc2mpspline(ls, "p.q50", lam = 1)
+                                  }))
+labspline
+```
+
+```
+## SoilProfileCollection with 6 profiles and 1154 horizons
+## profile ID: taxonname  |  horizon ID: hzID 
+## Depth range: 178 - 201 cm
+## 
+## ----- Horizons (6 / 1154 rows  |  8 / 8 columns) -----
+##  taxonname hzID top bottom p.q50 .pctMissing sliceID p.q50_spline
+##     Boomer    1   0      1  38.3           0       1     36.03549
+##     Boomer    2   1      2  38.3           0       2     36.02913
+##     Boomer    3   2      3  38.3           0       3     36.00999
+##     Boomer    4   3      4  35.8           0       4     35.97797
+##     Boomer    5   4      5  35.8           0       5     35.93993
+##     Boomer    6   5      6  35.8           0       6     35.90268
+## [... more horizons ...]
+## 
+## ----- Sites (6 / 6 rows  |  4 / 4 columns) -----
+##      taxonname  nona p.q50_rmse p.q50_rmse_iqr
+##         Boomer FALSE  2.0295778      0.1109059
+##       Cohasset FALSE  2.8338845      0.2303971
+##        Holland FALSE  0.9661844      0.7968525
+##         Musick FALSE  1.7841394      0.2317064
+##  Stump Springs FALSE  1.7075129      0.2032754
+##        Trabuco FALSE  2.2993073      0.2910515
+## 
+## Spatial Data: [EMPTY]
+```
+
+---
+
+class: bodySlide
+
+&lt;br&gt;
+
+## Sand [%] Mass-Preserving Spline
+
+&lt;img src="IgneousComparison_18and22A_files/figure-html/unnamed-chunk-9-1.png" width="720" /&gt;
+
+---
+class: bodySlide
+&lt;br&gt;
+
+## Spline profiles first, then slab
+
+ - It works, mostly, but is messy. More sensitive to missing data.
+ 
+ - Resulting "profiles" are not as clean as the inverse shown on previous slide.
+
+
+```r
+prop_sand &lt;- evalMissingData(labspc, "sand", name = "hzn_desgn")
+labspc &lt;- subset(labspc, prop_sand == 1)
+labspcspline &lt;- aqp::combine(profileApply(labspc, function(ls) {
+                                   spc2mpspline(ls, "sand", lam = 1)
+                                  }))
+# slab the spline results, rather than individual profiles
+splineslab &lt;- slab(labspcspline, taxonname ~ sand_spline, slab.structure = 1)
+depths(splineslab) &lt;- taxonname ~ top + bottom
+```
+ 
+
+
+
+---
+class: bodySlide
+&lt;br&gt;
+## Summarize it!
+
+
+Table: Summary Statistics for Mean PSCS interval (40 - 92 cm)
+
+|taxonname     | median_dwt_sand| mean_dwt_sand| sd_dwt_sand|
+|:-------------|---------------:|-------------:|-----------:|
+|Cohasset      |            24.4|          29.6|        14.4|
+|Boomer        |            32.9|          34.1|        10.4|
+|Trabuco       |            44.0|          42.6|         7.0|
+|Musick        |            45.0|          47.2|         8.2|
+|Stump Springs |            53.4|          53.4|        11.8|
+|Holland       |            54.2|          52.1|         9.4|
+
+---
+class: bodySlide
+&lt;br&gt;
+
+## Contact me with questions.
+.left-column[
+  &lt;br&gt;
+  ![](http://github.com/brownag.png)
+]
+
+.right-column[
+#### Andrew G. Brown
+
+&lt;a href="mailto:andrew.g.brown@usda.gov"&gt;<i class="fas  fa-mail-bulk "></i>&amp;nbsp;andrew.g.brown@usda.gov&lt;/a&gt;&lt;br&gt;
+&lt;a href="http://github.com/brownag"&gt;<i class="fab  fa-github "></i>&amp;nbsp;brownag&lt;/a&gt;&lt;br&gt;
+&lt;a href="http://twitter.com/humus_rocks"&gt;<i class="fab  fa-twitter "></i>&amp;nbsp;humus_rocks&lt;/a&gt;
+
+&lt;br&gt;&amp;nbsp;
+&lt;br&gt;&amp;nbsp;
+&lt;br&gt;&amp;nbsp;
+&lt;br&gt;&amp;nbsp;
+
+_USDA is an equal opportunity provider, employer, and lender._
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"slideNumberFormat": "%current%",
+"highlightStyle": "github",
+"highlightLines": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

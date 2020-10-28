@@ -8,6 +8,11 @@ output:
       highlightStyle: github
       highlightLines: true
 ---
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(fig.retina = 3) # set global knitr chunk options
+```
+
 class: titleSlide
 <br><br><br>
 .pull-left[
@@ -19,13 +24,14 @@ class: titleSlide
 
 .right[.large[<br><br><br><br><br><br><br><br>
               Susan B. Author <br>
-              <a href="mailto:[AUTHOREMAIL]"><i class="fas  fa-mail-bulk "></i>[AUTHOREMAIL]</a>
+              <a href="mailto:[AUTHOREMAIL]">`r icon::fa("mail-bulk")`&nbsp;[AUTHOREMAIL]</a>
               <br><br>
 ]]
 
 ---
 class: bodySlide
 <br>
+
 ## This is a title
 .left-column[
   [![](https://raw.githubusercontent.com/ncss-tech/aqp/master/misc/hexstickers/aqp_sticker_v2.png)](http://ncss-tech.github.io/aqp/)
@@ -46,9 +52,7 @@ class: bodySlide
 ]
 
 ---
-
 class: bodySlide
-
 <br>
 
 ## This is a title
@@ -75,11 +79,8 @@ class: bodySlide
   - sub comment
 ]
 
-
 ---
-
 class: bodySlide
-
 <br>
 
 ## This is a title
@@ -91,9 +92,7 @@ class: bodySlide
 - Slide
 
 ---
-
 class: bodySlideNOBR
-
 <br>
 
 ## bodySlideNOBR 
@@ -104,9 +103,7 @@ class: bodySlideNOBR
 
 
 ---
-
 class: bodySlideLite
-
 <br>
 
 ## bodySlideLite
@@ -117,12 +114,12 @@ class: bodySlideLite
 
 
 ---
-
 class: bodySlide
-
 <br>
 
 ## This is a title
+
+Use `ref.label` to reference code chunks out of order.
 
 .pull-left[
   ```{r ref.label = 'plot-ten', echo = FALSE}
@@ -143,7 +140,9 @@ class: bodySlide
 ---
 class: bodySlide
 <br>
+
 ## Thank you!
+
 .left-column[
   <br>
   ![](path/to/your/picture/here.png)

@@ -17,4 +17,5 @@ Imports:
     xaringan (>= 0.13.2)
 Remotes:
     yihui/xaringan
+    ropenscilabs/icon
 RoxygenNote: 7.1.1

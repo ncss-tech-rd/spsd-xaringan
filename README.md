@@ -14,7 +14,7 @@ remotes::install_github('ncss-tech-rd/spsdxaringan')
 
 3. Change the default values populated in the _.Rmd_ file that is created. Note that there are several different CSS classes. These are provided for basic slide styling that conforms with editorial standards.
 
-4. Call `xaringan::inf_mr()` or use RStudio _AddIns >> Xaringan >> Infinite Moon Reader_ menu item to interact with your new [React.js](https://yihui.name/en/2017/08/why-xaringan-remark-js/) slide deck!
+4. Call `xaringan::inf_mr()` or use RStudio _AddIns >> Xaringan >> Infinite Moon Reader_ menu item to interact with your new [Remark.js](https://yihui.name/en/2017/08/why-xaringan-remark-js/) slide deck!
 
 5. Read more on customizing your {_xaringan_} slides!
 

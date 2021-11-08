@@ -1,7 +1,7 @@
 Package: spsdxaringan
 Type: Package
 Title:  Xaringan Template With USDA-NRCS Soil and Plant Science Division Theme
-Version: 0.1.1
+Version: 0.2.0
 Author: Andrew G. Brown
 Authors@R: 
     person(given = "Andrew",
